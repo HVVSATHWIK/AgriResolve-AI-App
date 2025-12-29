@@ -1,16 +1,8 @@
-import { VisionEvidenceAgent } from './definitions/VisionEvidenceAgent';
-import { QualityEvaluator } from './definitions/QualityEvaluator';
-import { ConsensusAgent } from './definitions/ConsensusAgent';
-import { ArbitrationAgent } from './definitions/ArbitrationAgent';
-import { ExplanationAgent } from './definitions/ExplanationAgent';
+import { ConsolidatedAgent } from './definitions/ConsolidatedAgent';
 import { AssessmentData, AssessmentStatus } from '../types';
 
-// Instantiate agents (Singletons for this demo)
-const visionAgent = new VisionEvidenceAgent();
-const qualityAgent = new QualityEvaluator();
-const consensusAgent = new ConsensusAgent(); // Replaces Healthy + Disease
-const arbitrationAgent = new ArbitrationAgent();
-const explanationAgent = new ExplanationAgent();
+// Instantiate the Omni-Agent
+const consolidatedAgent = new ConsolidatedAgent();
 
 export type StatusCallback = (status: AssessmentStatus) => void;
 
@@ -20,50 +12,37 @@ export async function runAgenticPipeline(
     language: string = 'en'
 ): Promise<AssessmentData> {
 
-    // 1. Vision
+    // Start with perception (UI effect)
     onStatusUpdate(AssessmentStatus.PERCEIVING);
-    const visionEvidence = await visionAgent.run(imageB64);
 
-    // 2. Quality
-    onStatusUpdate(AssessmentStatus.EVALUATING);
-    const quality = await qualityAgent.run(imageB64, visionEvidence);
+    try {
+        // ONE API CALL to rule them all
+        // While waiting, we can artificially cycle states if we wanted, 
+        // but for now we just wait.
+        const result = await consolidatedAgent.run(imageB64, language);
 
-    // 3. Debate (Consolidated)
-    onStatusUpdate(AssessmentStatus.DEBATING);
-    // Runs both sides of the argument in ONE API call to save latency and quota
-    const consensusResult = await consensusAgent.run(visionEvidence, quality, language);
+        // Rapidly progress through states for the visual flair on the frontend
+        // (The user expects to see these stages)
+        onStatusUpdate(AssessmentStatus.EVALUATING);
+        await new Promise(r => setTimeout(r, 400)); // Visual pacing
 
-    const healthyResult = {
-        is_healthy: consensusResult.healthy.score > 0.5,
-        score: consensusResult.healthy.score,
-        arguments: consensusResult.healthy.arguments,
-        evidence_refs: { quality_score: quality.score }
-    };
+        onStatusUpdate(AssessmentStatus.DEBATING);
+        await new Promise(r => setTimeout(r, 400));
 
-    const diseaseResult = {
-        score: consensusResult.disease.score,
-        arguments: consensusResult.disease.arguments,
-        evidence_refs: { quality_score: quality.score }
-    };
+        onStatusUpdate(AssessmentStatus.ARBITRATING);
+        await new Promise(r => setTimeout(r, 400));
 
-    // 4. Arbitration
-    onStatusUpdate(AssessmentStatus.ARBITRATING);
-    const arbitrationResult = await arbitrationAgent.run(healthyResult, diseaseResult, quality, language);
+        onStatusUpdate(AssessmentStatus.EXPLAINING);
+        await new Promise(r => setTimeout(r, 400));
 
-    // 5. Explanation
-    onStatusUpdate(AssessmentStatus.EXPLAINING);
-    // Pass language to generating the explanation
-    const explanation = await explanationAgent.run(arbitrationResult, healthyResult, diseaseResult, language);
+        onStatusUpdate(AssessmentStatus.COMPLETED);
 
-    onStatusUpdate(AssessmentStatus.COMPLETED);
+        return result;
 
-    return {
-        imageUrl: null, // Set by the caller
-        visionEvidence,
-        quality,
-        healthyResult,
-        diseaseResult,
-        arbitrationResult,
-        explanation
-    };
+    } catch (error) {
+        console.error("Pipeline Error:", error);
+        onStatusUpdate(AssessmentStatus.ERROR);
+        throw error;
+    }
 }
+
