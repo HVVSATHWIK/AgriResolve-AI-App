@@ -16,7 +16,7 @@ export async function processCropHealth(imageB64: string) {
             },
           },
           {
-            text: `Act as a multi-agent system (AgroResolveAI) to assess this crop leaf image.
+            text: `Act as a multi-agent system (AgriResolve AI) to assess this crop leaf image.
             
             Follow these workflow stages:
             1. VISION EVIDENCE: Extract low-level features (textures, colors, anomalies).

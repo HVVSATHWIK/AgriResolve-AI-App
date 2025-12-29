@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Brain, Eye, ShieldCheck, Scale, FileText, Activity, Zap } from 'lucide-react';
+import { Brain, Eye, ShieldCheck, Scale, FileText, Activity } from 'lucide-react';
 import { AssessmentStatus } from '../../../types';
 import { cn } from '../../../lib/utils';
 
@@ -46,11 +46,9 @@ const AGENTS = [
     }
 ];
 
-// Helper to map current status to active index
+// Helper to map current status to active index (0 to 4)
 const getActiveIndex = (status: AssessmentStatus) => {
     const order = [
-        AssessmentStatus.IDLE,
-        AssessmentStatus.UPLOADING,
         AssessmentStatus.PERCEIVING,
         AssessmentStatus.EVALUATING,
         AssessmentStatus.DEBATING,
@@ -58,100 +56,100 @@ const getActiveIndex = (status: AssessmentStatus) => {
         AssessmentStatus.EXPLAINING,
         AssessmentStatus.COMPLETED
     ];
-    // Map IDLE/UPLOADING to 0 (before first agent), others to their index
-    // The visualizer starts at PERCEIVING (index 2 in order array)
-    // So we need to shift logic slightly or just use indexOf
-    return order.indexOf(status) - 1; // -1 because IDLE/UPLOADING are before the first visual step?
-    // Actually, let's keep it simple. The component expects 1-based index roughly.
-    // If status is PERCEIVING (index 2), we want activeIndex to match the first agent (index 0 in AGENTS).
-    // Let's rewrite the return to be clearer.
+
+    // Find where the current status is in the pipeline
+    const index = order.indexOf(status);
+
+    // If completed, return length (all active/done)
+    if (status === AssessmentStatus.COMPLETED) return 5;
+
+    // If not found (e.g. IDLE/UPLOADING), return -1
+    return index;
 };
 
 export const AgentVisualizer: React.FC<AgentVisualizerProps> = ({ status }) => {
     const activeIndex = getActiveIndex(status);
 
-    if (status === AssessmentStatus.IDLE || status === AssessmentStatus.UPLOADING) return null;
+    if (status === AssessmentStatus.IDLE || status === AssessmentStatus.ERROR) return null;
 
     return (
-        <div className="w-full max-w-4xl mx-auto my-8 p-6 bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 shadow-2xl overflow-hidden relative">
-            {/* Background Grid Animation */}
-            <div className="absolute inset-0 z-0 opacity-10">
-                <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
-            </div>
+        <div className="w-full py-4 relative pb-12">
 
-            <div className="relative z-10 flex justify-between items-center gap-4">
+            <div className="flex items-start justify-between w-full relative z-10 px-2 lg:px-8">
                 {AGENTS.map((agent, index) => {
-                    const isActive = index + 1 === activeIndex; // +1 because PENDING is 0
-                    const isCompleted = index + 1 < activeIndex;
+                    // Current step is active if index matches activeIndex
+                    const isActive = index === activeIndex;
+                    // Step is completed if index is less than activeIndex
+                    const isCompleted = index < activeIndex;
 
                     return (
-                        <div key={agent.label} className="flex flex-col items-center gap-3 flex-1">
-                            {/* Connection Line */}
+                        <React.Fragment key={agent.id}>
+                            {/* Agent Node */}
+                            <div className="group flex flex-col items-center relative z-20 w-12 md:w-16 flex-shrink-0">
+                                {/* Icon Circle */}
+                                <motion.div
+                                    initial={{ scale: 0.8, opacity: 0.5 }}
+                                    animate={{
+                                        scale: isActive ? 1.1 : 1,
+                                        opacity: isActive || isCompleted ? 1 : 0.4,
+                                        backgroundColor: isActive || isCompleted ? 'var(--bg-color)' : '#f3f4f6',
+                                        boxShadow: isActive ? "0 4px 12px -2px rgba(0,0,0,0.1)" : "none"
+                                    }}
+                                    style={{ '--bg-color': isCompleted ? '#16a34a' : '#ffffff' } as any}
+                                    className={cn(
+                                        "w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center transition-colors duration-500 border-[1.5px] relative z-30",
+                                        isActive ? "border-green-500 bg-green-50 text-green-600" :
+                                            isCompleted ? "border-green-500 bg-green-500 text-white" :
+                                                "border-gray-100 bg-gray-50 text-gray-300"
+                                    )}
+                                >
+                                    <agent.icon className="w-5 h-5 md:w-7 md:h-7" strokeWidth={1.5} />
+
+                                    {/* Pulse Ring for Active */}
+                                    {isActive && (
+                                        <motion.div
+                                            className="absolute inset-0 rounded-2xl border-2 border-green-500"
+                                            animate={{ scale: [1, 1.4], opacity: [0.5, 0] }}
+                                            transition={{ repeat: Infinity, duration: 2 }}
+                                        />
+                                    )}
+                                </motion.div>
+
+                                {/* Text Label - Absolute Positioned & Constrained Width */}
+                                <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 w-[72px] text-center pointer-events-none">
+                                    <span className={cn(
+                                        "block text-[8px] md:text-[9px] font-bold uppercase tracking-wide leading-tight transition-colors duration-300 break-words",
+                                        isActive ? "text-green-600" : isCompleted ? "text-green-700" : "text-gray-300"
+                                    )}>
+                                        {agent.label}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Connector Line */}
                             {index < AGENTS.length - 1 && (
-                                <div className="absolute top-10 left-[calc(10%_+_4rem)] w-[calc(20%_-_2rem)] h-0.5 bg-gray-700/30 -z-10">
+                                <div className="flex-1 h-[2px] bg-gray-200/50 mt-6 md:mt-8 relative -mx-2 md:-mx-4 z-0 rounded-full overflow-hidden self-start">
                                     <motion.div
-                                        className="h-full bg-green-400"
+                                        className="h-full bg-green-500 relative"
                                         initial={{ width: "0%" }}
                                         animate={{ width: isCompleted ? "100%" : "0%" }}
-                                        transition={{ duration: 0.5 }}
-                                    />
+                                        transition={{ duration: 0.5, ease: "easeInOut" }}
+                                    >
+                                        {/* Data Flow Particle Effect */}
+                                        {isCompleted && (
+                                            <motion.div
+                                                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent w-20 transform -skew-x-12"
+                                                animate={{ x: ["-100%", "500%"] }}
+                                                transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                                            />
+                                        )}
+                                    </motion.div>
                                 </div>
                             )}
-
-                            {/* Icon Circle */}
-                            <motion.div
-                                initial={{ scale: 0.8, opacity: 0.5 }}
-                                animate={{
-                                    scale: isActive ? 1.1 : 1,
-                                    opacity: isActive || isCompleted ? 1 : 0.5,
-                                    boxShadow: isActive ? "0 0 20px 2px rgba(34, 197, 94, 0.4)" : "none"
-                                }}
-                                className={cn(
-                                    "w-16 h-16 rounded-2xl flex items-center justify-center transition-colors duration-300",
-                                    isActive ? agent.color : isCompleted ? "bg-green-600" : "bg-gray-800"
-                                )}
-                            >
-                                <agent.icon className="w-8 h-8 text-white" />
-
-                                {isActive && (
-                                    <motion.div
-                                        className="absolute inset-0 rounded-2xl border-2 border-white/50"
-                                        animate={{ scale: [1, 1.2, 1], opacity: [1, 0, 1] }}
-                                        transition={{ repeat: Infinity, duration: 2 }}
-                                    />
-                                )}
-                            </motion.div>
-
-                            {/* Label */}
-                            <div className="text-center">
-                                <p className={cn(
-                                    "text-xs font-bold uppercase tracking-wider mb-1",
-                                    isActive ? "text-green-400" : isCompleted ? "text-green-600" : "text-gray-500"
-                                )}>
-                                    {agent.label}
-                                </p>
-                                {isActive && (
-                                    <motion.p
-                                        initial={{ opacity: 0, y: 5 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        className="text-[10px] text-gray-400 font-mono"
-                                    >
-                                        {agent.desc}
-                                    </motion.p>
-                                )}
-                            </div>
-                        </div>
+                        </React.Fragment>
                     );
                 })}
             </div>
-
-            {/* Activity Pulse */}
-            {status !== AssessmentStatus.COMPLETED && (
-                <div className="absolute top-4 right-4 flex items-center gap-2">
-                    <span className="text-xs font-mono text-green-400 animate-pulse">SYSTEM ACTIVE</span>
-                    <Activity className="w-4 h-4 text-green-400 animate-spin-slow" />
-                </div>
-            )}
         </div>
     );
 };

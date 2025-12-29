@@ -1,4 +1,5 @@
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
 import { HypothesisResult } from '../types';
 import { ShieldCheck, AlertTriangle } from 'lucide-react';
 
@@ -33,7 +34,7 @@ export const HypothesisDebate: React.FC<HypothesisDebateProps> = ({ healthy, dis
         <div className="bg-gray-50 rounded-lg p-4 border border-gray-100 text-sm text-gray-700 leading-relaxed">
           <ul className="list-disc pl-4 space-y-2 marker:text-blue-400">
             {healthy?.arguments?.map((arg, i) => (
-              <li key={i}>{arg}</li>
+              <li key={i}><ReactMarkdown components={{ p: React.Fragment }}>{arg}</ReactMarkdown></li>
             ))}
           </ul>
         </div>
@@ -59,7 +60,7 @@ export const HypothesisDebate: React.FC<HypothesisDebateProps> = ({ healthy, dis
         <div className="bg-gray-50 rounded-lg p-4 border border-gray-100 text-sm text-gray-700 leading-relaxed">
           <ul className="list-disc pl-4 space-y-2 marker:text-red-400">
             {disease?.arguments?.map((arg, i) => (
-              <li key={i}>{arg}</li>
+              <li key={i}><ReactMarkdown components={{ p: React.Fragment }}>{arg}</ReactMarkdown></li>
             ))}
           </ul>
         </div>

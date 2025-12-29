@@ -1,5 +1,6 @@
 
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
 import { AssessmentData } from '../types';
 
 interface FinalResultsProps {
@@ -31,10 +32,10 @@ export const FinalResults: React.FC<FinalResultsProps> = ({ data }) => {
           Arbitration Verdict
         </h2>
 
-        <div className="prose prose-green max-w-none">
-          <p className="text-lg text-gray-700 leading-relaxed font-medium">
+        <div className="prose prose-green max-w-none text-lg text-gray-700 leading-relaxed font-medium">
+          <ReactMarkdown>
             {data.explanation?.summary}
-          </p>
+          </ReactMarkdown>
           <div className="text-xs text-gray-400 mt-2">
             Explanation Agent
           </div>
@@ -47,7 +48,14 @@ export const FinalResults: React.FC<FinalResultsProps> = ({ data }) => {
               {data.explanation?.guidance?.map((item, i) => (
                 <li key={i} className="flex items-start gap-3 text-gray-700">
                   <svg className="w-5 h-5 text-green-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
-                  <span className="text-sm">{item}</span>
+                  <span className="text-sm">
+                    <ReactMarkdown components={{
+                      p: ({ children }) => <span className="inline">{children}</span>,
+                      strong: ({ children }) => <span className="font-bold text-gray-900">{children}</span>
+                    }}>
+                      {item}
+                    </ReactMarkdown>
+                  </span>
                 </li>
               ))}
             </ul>

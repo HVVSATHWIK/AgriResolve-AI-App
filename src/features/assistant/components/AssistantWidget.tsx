@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { MessageSquare, X, Send, Bot, User } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import { useAIChat } from '../hooks/useAIChat';
 import { AssessmentData } from '../../../types';
 
@@ -75,10 +76,19 @@ export const AssistantWidget: React.FC<AssistantWidgetProps> = ({ data }) => {
                                 </div>
 
                                 <div className={`max-w-[80%] rounded-2xl p-3 text-sm leading-relaxed shadow-sm ${msg.sender === 'user'
-                                        ? 'bg-green-600 text-white rounded-tr-none'
-                                        : 'bg-white text-gray-800 border border-gray-100 rounded-tl-none'
+                                    ? 'bg-green-600 text-white rounded-tr-none'
+                                    : 'bg-white text-gray-800 border border-gray-100 rounded-tl-none'
                                     }`}>
-                                    {msg.text}
+                                    <ReactMarkdown
+                                        components={{
+                                            p: ({ node, ...props }) => <p className="mb-1 last:mb-0" {...props} />,
+                                            ul: ({ node, ...props }) => <ul className="list-disc pl-4 mb-2 space-y-1" {...props} />,
+                                            li: ({ node, ...props }) => <li className={`marker:${msg.sender === 'user' ? 'text-green-200' : 'text-green-600'}`} {...props} />,
+                                            strong: ({ node, ...props }) => <strong className={`font-bold ${msg.sender === 'user' ? 'text-green-100' : 'text-green-700'}`} {...props} />
+                                        }}
+                                    >
+                                        {msg.text}
+                                    </ReactMarkdown>
                                 </div>
                             </div>
                         ))}

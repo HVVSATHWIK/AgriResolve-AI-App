@@ -20,7 +20,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, history = [], onSelect
               <img src="/logo.svg" alt="AgroResolve Logo" className="w-full h-full object-contain" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-gray-900 tracking-tight">AgroResolve</h1>
+              <h1 className="text-lg font-bold text-gray-900 tracking-tight">AgriResolve AI</h1>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                 <span className="text-xs font-semibold text-green-700 tracking-wide uppercase">System Online</span>

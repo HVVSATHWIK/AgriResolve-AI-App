@@ -8,7 +8,9 @@ import { AgentVisualizer } from './features/analysis/components/AgentVisualizer'
 import { ScanOverlay } from './features/analysis/components/ScanOverlay';
 import { usePersistentHistory } from './features/history/hooks/usePersistentHistory';
 import { AssistantWidget } from './features/assistant/components/AssistantWidget';
+import { BioNetworkScene } from './features/visualization/components/BioNetworkScene';
 import { Upload, AlertCircle, FileText, CheckCircle2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const App: React.FC = () => {
   const [status, setStatus] = useState<AssessmentStatus>(AssessmentStatus.IDLE);
@@ -80,7 +82,9 @@ const App: React.FC = () => {
 
   return (
     <Layout history={history} onSelectHistory={() => { }}>
-      <div className="mb-6 border-b border-gray-200 pb-6">
+      <BioNetworkScene />
+
+      <div className="mb-6 border-b border-gray-200/50 pb-6 relative z-10 backdrop-blur-sm bg-white/30 rounded-t-2xl p-6 -mx-6 -mt-6">
         <h2 className="text-2xl font-bold text-gray-900 tracking-tight">
           Crop Health Diagnostic
         </h2>
@@ -89,131 +93,156 @@ const App: React.FC = () => {
         </p>
       </div>
 
-      {status === AssessmentStatus.IDLE || status === AssessmentStatus.ERROR ? (
-        <div className="max-w-4xl mx-auto mt-8">
+      <div className="relative z-10">
+        {status === AssessmentStatus.IDLE || status === AssessmentStatus.ERROR ? (
+          <div className="max-w-4xl mx-auto mt-8">
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center space-y-2 mb-12"
+            >
+              <h1 className="text-4xl font-black text-gray-900 tracking-tight">Crop Health Diagnostic</h1>
+              <p className="text-gray-500 font-medium">Multi-Agent Analysis System • v2.1.0 (Stable)</p>
+            </motion.div>
 
-          {/* Primary Action Card */}
-          <div
-            onClick={triggerUpload}
-            className="group flex flex-col items-center justify-center p-12 border-2 border-dashed border-gray-300 rounded-2xl bg-white hover:bg-gray-50 hover:border-green-600 transition-all cursor-pointer shadow-sm relative overflow-hidden"
-          >
-            <div className="absolute top-0 left-0 w-full h-1 bg-green-600 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
-
-            <div className="relative">
-              <div className="absolute inset-0 bg-green-100 rounded-full animate-ping opacity-0 group-hover:opacity-75 duration-1000" />
-              <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 border border-green-100 relative z-10">
-                <Upload className="w-10 h-10 text-green-700" />
-              </div>
-            </div>
-
-            <h3 className="text-2xl font-bold text-gray-900 tracking-tight">Upload Leaf Image</h3>
-            <p className="text-gray-600 text-base mt-3 text-center max-w-md font-medium leading-relaxed">
-              Upload a clear image of a single leaf to begin analysis.
-              <br />
-              <span className="text-sm text-gray-400 font-normal mt-1 block">Supported formats: JPEG, PNG</span>
-            </p>
-
-            <button className="mt-8 px-8 py-3 bg-green-700 text-white rounded-lg text-sm font-bold tracking-wide uppercase shadow-md hover:bg-green-800 transition-all transform group-hover:translate-y-[-2px] flex items-center gap-2">
-              <Upload className="w-4 h-4" />
-              Select Image File
-            </button>
-          </div>
-
-          {/* 3-Step Process Guide */}
-          <div className="mt-16">
-            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-8 text-center border-b border-gray-100 pb-4">Diagnostic Workflow</h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative px-4">
-              {/* Connector Line (Desktop) */}
-              <div className="hidden md:block absolute top-[2.5rem] left-[20%] right-[20%] h-0.5 bg-gray-100 -z-10" />
-
-              {[
-                { icon: Upload, title: "1. Upload Sample", desc: "Use a clear, focused image of the affected area with good lighting." },
-                { icon: CheckCircle2, title: "2. Automated Analysis", desc: "Our multi-agent grid evaluates visual symptoms & image quality." },
-                { icon: FileText, title: "3. Review Results", desc: "Receive an explainable diagnosis with confidence scores & treatment guidance." }
-              ].map((step, idx) => (
-                <div key={idx} className="flex flex-col items-center text-center group">
-                  <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center border-2 border-gray-100 shadow-sm mb-4 relative z-10 group-hover:border-green-200 transition-colors">
-                    <step.icon className="w-8 h-8 text-gray-400 group-hover:text-green-600 transition-colors" />
-                  </div>
-                  <h5 className="text-sm font-bold text-gray-900 mb-2">{step.title}</h5>
-                  <p className="text-xs text-gray-500 leading-relaxed max-w-[220px]">
-                    {step.desc}
-                  </p>
+            {/* Upload Section with Scale Animation */}
+            {!image && !data && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5 }}
+                className="bg-white/80 backdrop-blur-md rounded-3xl p-12 border border-green-100 shadow-xl text-center hover:shadow-2xl transition-shadow duration-300"
+              >
+                <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Upload className="w-10 h-10 text-green-600" />
                 </div>
-              ))}
-            </div>
-          </div>
+                <h2 className="text-3xl font-bold text-gray-900 mb-4">Upload Leaf Image</h2>
+                <p className="text-gray-600 mb-8 max-w-md mx-auto text-lg">
+                  Upload a clear image of a single leaf to begin analysis.
+                  <br /><span className="text-sm text-gray-400">Supported formats: JPEG, PNG</span>
+                </p>
 
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleImageUpload}
-            accept="image/*"
-            className="hidden"
-          />
+                <label className="relative inline-flex group cursor-pointer">
+                  <div className="absolute transition-all duration-1000 opacity-70 -inset-px bg-gradient-to-r from-[#44BC48] via-[#118B44] to-[#44BC48] rounded-xl blur-lg group-hover:opacity-100 group-hover:-inset-1 group-hover:duration-200 animate-tilt"></div>
+                  <button
+                    onClick={() => document.getElementById('file-upload')?.click()}
+                    className="relative inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-white transition-all duration-200 bg-green-600 font-pj rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-600"
+                  >
+                    <Upload className="w-5 h-5 mr-2" />
+                    SELECT IMAGE FILE
+                  </button>
+                  <input
+                    id="file-upload"
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                  />
+                </label>
+              </motion.div>
+            )}
 
-          {error && (
-            <div className="mt-8 p-4 bg-red-50 text-red-700 rounded-lg text-sm border border-red-200 flex items-center gap-3 shadow-sm animate-in fade-in slide-in-from-bottom-2">
-              <AlertCircle className="w-5 h-5 shrink-0" />
-              <span className="font-medium">{error}</span>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-8 pb-12">
-          {/* Main Workspace */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* Image Preview */}
-            <div className="lg:col-span-5">
-              <div className="sticky top-8 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
-                  <img src={image!} alt="Uploaded leaf" className="w-full h-full object-cover" />
+            {/* Error Message */}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-8 p-4 bg-red-50 text-red-700 rounded-lg text-sm border border-red-200 flex items-center gap-3 shadow-sm"
+              >
+                <AlertCircle className="w-5 h-5 shrink-0" />
+                <span className="font-medium">{error}</span>
+              </motion.div>
+            )}
 
-                  {/* Scan Animation Overlay */}
-                  <ScanOverlay isActive={status === AssessmentStatus.PERCEIVING || status === AssessmentStatus.EVALUATING} />
+            {/* 3-Step Process Guide */}
+            {!image && !data && !error && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="mt-16"
+              >
+                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-8 text-center border-b border-gray-100 pb-4">Diagnostic Workflow</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative px-4">
+                  {/* Connector Line (Desktop) */}
+                  <div className="hidden md:block absolute top-[2.5rem] left-[20%] right-[20%] h-0.5 bg-gray-100 -z-10" />
 
-                  {status === AssessmentStatus.PERCEIVING && (
-                    <div className="absolute top-4 left-4 right-4 bg-black/75 text-white text-xs py-2 px-3 rounded-md shadow-lg backdrop-blur-sm flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                      Processing Image Data...
+                  {[
+                    { icon: Upload, title: "1. Upload Sample", desc: "Use a clear, focused image of the affected area with good lighting." },
+                    { icon: CheckCircle2, title: "2. Automated Analysis", desc: "Our multi-agent grid evaluates visual symptoms & image quality." },
+                    { icon: FileText, title: "3. Review Results", desc: "Receive an explainable diagnosis with confidence scores & treatment guidance." }
+                  ].map((step, idx) => (
+                    <div key={idx} className="flex flex-col items-center text-center group">
+                      <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center border-2 border-gray-100 shadow-sm mb-4 relative z-10 group-hover:border-green-200 transition-colors">
+                        <step.icon className="w-8 h-8 text-gray-400 group-hover:text-green-600 transition-colors" />
+                      </div>
+                      <h5 className="text-sm font-bold text-gray-900 mb-2">{step.title}</h5>
+                      <p className="text-xs text-gray-500 leading-relaxed max-w-[220px]">
+                        {step.desc}
+                      </p>
                     </div>
-                  )}
+                  ))}
                 </div>
-
-                <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4">
-                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Source Image</span>
-                  {status === AssessmentStatus.COMPLETED && (
-                    <button onClick={reset} className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline">
-                      Start New Analysis
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Workflow Progress */}
-            <div className="lg:col-span-7">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4 border-b border-gray-100 pb-2">Analysis Pipeline</h3>
-                <AgentVisualizer status={status} />
-              </div>
-            </div>
+              </motion.div>
+            )}
           </div>
+        ) : (
+          <div className="space-y-8 pb-12">
+            {/* Main Workspace */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              {/* Image Preview */}
+              <div className="lg:col-span-5">
+                <div className="sticky top-8 bg-white/80 backdrop-blur-sm p-4 rounded-xl shadow-sm border border-gray-200">
+                  <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
+                    <img src={image!} alt="Uploaded leaf" className="w-full h-full object-cover" />
 
-          <HypothesisDebate
-            healthy={data?.healthyResult}
-            disease={data?.diseaseResult}
-            isVisible={[AssessmentStatus.DEBATING, AssessmentStatus.ARBITRATING, AssessmentStatus.EXPLAINING, AssessmentStatus.COMPLETED].includes(status)}
-          />
+                    {/* Scan Animation Overlay */}
+                    <ScanOverlay isActive={status === AssessmentStatus.PERCEIVING || status === AssessmentStatus.EVALUATING} />
 
-          {status === AssessmentStatus.COMPLETED && data && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <FinalResults data={data} />
+                    {status === AssessmentStatus.PERCEIVING && (
+                      <div className="absolute top-4 left-4 right-4 bg-black/75 text-white text-xs py-2 px-3 rounded-md shadow-lg backdrop-blur-sm flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                        Processing Image Data...
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4">
+                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Source Image</span>
+                    {status === AssessmentStatus.COMPLETED && (
+                      <button onClick={reset} className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline">
+                        Start New Analysis
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Workflow Progress */}
+              <div className="lg:col-span-7">
+                <div className="bg-white/90 backdrop-blur-md rounded-xl shadow-sm border border-gray-200 p-6">
+                  <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-4 border-b border-gray-100 pb-2">Analysis Pipeline</h3>
+                  <AgentVisualizer status={status} />
+                </div>
+              </div>
             </div>
-          )}
-        </div>
-      )}
-      <AssistantWidget data={data} />
+
+            <HypothesisDebate
+              healthy={data?.healthyResult!}
+              disease={data?.diseaseResult!}
+              isVisible={[AssessmentStatus.DEBATING, AssessmentStatus.ARBITRATING, AssessmentStatus.EXPLAINING, AssessmentStatus.COMPLETED].includes(status)}
+            />
+
+            {status === AssessmentStatus.COMPLETED && data && (
+              <div className="bg-white/90 backdrop-blur-md rounded-xl shadow-sm border border-gray-200 p-6">
+                <FinalResults data={data} />
+              </div>
+            )}
+          </div>
+        )}
+
+        <AssistantWidget data={data} />
+      </div>
     </Layout>
   );
 };
