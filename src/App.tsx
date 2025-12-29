@@ -8,6 +8,7 @@ import { HypothesisDebate } from './components/HypothesisDebate';
 import { FinalResults } from './components/FinalResults';
 import { AgentVisualizer } from './components/AgentVisualizer';
 import { ScanOverlay } from './components/ScanOverlay';
+import Scene3D from './components/3d/Scene';
 
 const App: React.FC = () => {
   const [status, setStatus] = useState<AssessmentStatus>(AssessmentStatus.IDLE);
@@ -59,7 +60,8 @@ const App: React.FC = () => {
 
   return (
     <Layout>
-      <div className="mb-8">
+      <Scene3D />
+      <div className="relative z-10 mb-8">
         <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">
           Crop Health Risk Assessment
         </h2>
