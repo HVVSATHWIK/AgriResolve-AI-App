@@ -26,7 +26,7 @@ async function test() {
     try {
         const model = ai.models.generateContent;
         const result = await model({
-            model: 'models/gemini-2.0-flash',
+            model: 'gemini-2.5-flash-lite',
             contents: [{ parts: [{ text: "Hello" }] }]
         });
         console.log("Success! Response:", result.text);
