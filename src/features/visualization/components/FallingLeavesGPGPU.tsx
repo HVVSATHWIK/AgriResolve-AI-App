@@ -73,8 +73,9 @@ export const FallingLeavesGPGPU: React.FC = () => {
         velVariable.material.uniforms = {
             uTime: { value: 0 },
             uDelta: { value: 0 },
-            uSpeed: { value: 0.1 }, // Adjustment factor
-            uCurlFreq: { value: 0.2 },
+            uSpeed: { value: 0.06 }, // calmer fall speed
+            uCurlFreq: { value: 0.12 }, // less turbulent curl noise
+            uSeed: { value: new THREE.Vector4(Math.random(), Math.random(), Math.random(), Math.random()) },
             resolution: { value: new THREE.Vector2(TEXTURE_SIZE, TEXTURE_SIZE) }
         };
 

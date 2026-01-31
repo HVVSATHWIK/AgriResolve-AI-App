@@ -8,8 +8,8 @@ import * as fc from 'fast-check';
 import { Server as SocketIOServer } from 'socket.io';
 import { createServer } from 'http';
 import { io as Client, Socket as ClientSocket } from 'socket.io-client';
-import { sessionManager } from '../../websocket/sessionManager';
-import { websocketManager } from '../../websocket/websocketManager';
+import { sessionManager } from '../../websocket/sessionManager.js';
+import { websocketManager } from '../../websocket/websocketManager.js';
 
 describe('Property: Session Uniqueness and State Consistency', () => {
   let server: any;

@@ -3,6 +3,7 @@ uniform float uTime;
 uniform float uDelta;
 uniform float uSpeed;
 uniform float uCurlFreq;
+uniform vec4 uSeed;
 
 // ASHIMA WEBGL-NOISE (Simplex 3D)
 // https://github.com/ashima/webgl-noise/blob/master/src/noise3D.glsl
@@ -98,20 +99,25 @@ void main() {
     vec4 pos = texture2D(texturePosition, uv);
     vec4 vel = texture2D(textureVelocity, uv);
 
-    // Forces
-    vec3 curl = curlNoise(pos.xyz * uCurlFreq + uTime * 0.1);
+  // Forces
+  // Break up coherent patterns by offsetting the noise domain per-leaf using pos.w and a random seed.
+  float id = pos.w; // 0..1 per-particle seed from initialization
+  vec3 domainOffset = vec3(uSeed.x, uSeed.y, uSeed.z) * 37.0 + vec3(id * 19.1, id * 7.7, id * 13.3);
+  vec3 curl = curlNoise((pos.xyz + domainOffset) * uCurlFreq + uTime * 0.08);
     
     // Gravity
     vec3 gravity = vec3(0.0, -1.0, 0.0);
     
-    // Wind push (combine curl with global wind direction)
-    vec3 wind = curl * 2.0; 
+  // Wind push (combine curl with global wind direction)
+  // Add tiny per-leaf side drift so the flow doesn't look "tiley".
+  vec3 drift = vec3(sin(uTime * 0.35 + id * 6.283) * 0.08, 0.0, cos(uTime * 0.28 + id * 6.283) * 0.06);
+  vec3 wind = (curl + drift) * 0.55;
     
     // Target velocity: Gravity + Wind
-    vec3 targetVel = gravity * uSpeed + wind * (uSpeed * 0.5);
+  vec3 targetVel = gravity * uSpeed + wind * (uSpeed * 0.35);
     
     // Apply Drag / Inertia (Lerp towards target)
-    vec3 newVel = mix(vel.xyz, targetVel, 0.1); // 0.1 = Inertia factor
+  vec3 newVel = mix(vel.xyz, targetVel, 0.06); // more inertia, smoother motion
 
     gl_FragColor = vec4(newVel, 1.0);
 }

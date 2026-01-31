@@ -1,8 +1,8 @@
 import express from 'express';
 import { Pool } from 'pg';
-import { logger } from '../utils/logger';
-import { sessionManager } from '../websocket/sessionManager';
-import { websocketManager } from '../websocket/websocketManager';
+import { logger } from '../utils/logger.js';
+import { sessionManager } from '../websocket/sessionManager.js';
+import { websocketManager } from '../websocket/websocketManager.js';
 
 interface CollaborationSession {
   sessionId: string;

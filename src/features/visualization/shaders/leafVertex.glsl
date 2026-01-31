@@ -41,7 +41,9 @@ void main() {
     // Orientation logic
     // Leaves tumble based on speed and random factors
     vec3 axis = normalize(cross(vec3(0.0, 1.0, 0.0), vel + vec3(0.1))); // Cross up with velocity
-    float angle = length(vel) * uTime * 2.0 + pos.x; // Speed * Time + Random Offset
+    // Slow, stable tumble (avoid rapid oscillation)
+    float speed = clamp(length(vel), 0.0, 1.0);
+    float angle = speed * uTime * 0.6 + pos.x * 0.3; // Lower time multiplier + smaller random offset
     
     mat4 rot = rotationMatrix(axis, angle);
     

@@ -1,5 +1,5 @@
-import { logger } from '../utils/logger';
-import { operationalTransform } from './operationalTransform';
+import { logger } from '../utils/logger.js';
+import { operationalTransform } from './operationalTransform.js';
 
 interface WorkspaceUpdate {
   type: 'annotation' | 'diagnostic' | 'image' | 'recommendation';

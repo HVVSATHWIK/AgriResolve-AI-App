@@ -15,6 +15,7 @@ export const FinalResults: React.FC<FinalResultsProps> = ({ data, sourceImage })
 
   const [leafCrops, setLeafCrops] = useState<LeafCrop[]>([]);
   const [sourceDims, setSourceDims] = useState<{ w: number; h: number } | null>(null);
+  const [selectedLeafId, setSelectedLeafId] = useState<string | null>(null);
 
   const leafCount = useMemo(() => {
     const n = data.leafAssessments?.length || 0;
@@ -53,6 +54,16 @@ export const FinalResults: React.FC<FinalResultsProps> = ({ data, sourceImage })
       cancelled = true;
     };
   }, [sourceImage, leafCount]);
+
+  // Keep selection valid when new results arrive
+  useEffect(() => {
+    const ids = (data.leafAssessments ?? []).map((l) => l.id).filter(Boolean);
+    if (ids.length === 0) {
+      setSelectedLeafId(null);
+      return;
+    }
+    setSelectedLeafId((prev) => (prev && ids.includes(prev) ? prev : ids[0]));
+  }, [data.leafAssessments]);
 
   const formatConfidence = (value?: number) => {
     const num = typeof value === 'number' ? value : 0;
@@ -110,12 +121,18 @@ export const FinalResults: React.FC<FinalResultsProps> = ({ data, sourceImage })
                 const widthPct = (crop.bbox.w / sourceDims.w) * 100;
                 const heightPct = (crop.bbox.h / sourceDims.h) * 100;
                 const label = data.leafAssessments?.[index]?.id || `Leaf ${index + 1}`;
+                const isSelected = !selectedLeafId || selectedLeafId === label;
 
                 return (
                   <div
                     key={`${label}-${index}`}
-                    className="absolute border-2 border-green-600 rounded-lg pointer-events-none"
+                    className={`absolute rounded-lg transition-all ${
+                      isSelected
+                        ? 'border-2 border-green-600 shadow-[0_0_0_4px_rgba(34,197,94,0.18)]'
+                        : 'border border-green-600/35 opacity-60'
+                    } ${selectedLeafId ? 'cursor-pointer pointer-events-auto' : 'pointer-events-none'}`}
                     style={{ left: `${leftPct}%`, top: `${topPct}%`, width: `${widthPct}%`, height: `${heightPct}%` }}
+                    onClick={() => setSelectedLeafId(label)}
                   >
                     <div className="absolute -top-3 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-600 text-white border border-white/30">
                       {label}
@@ -171,7 +188,15 @@ export const FinalResults: React.FC<FinalResultsProps> = ({ data, sourceImage })
       <div className="space-y-4">
         {data.leafAssessments && Array.isArray(data.leafAssessments) && data.leafAssessments.length > 0 ? (
           data.leafAssessments.map((leaf, index) => (
-            <div key={index} className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+            <div
+              key={index}
+              className={`bg-white rounded-2xl p-6 border shadow-sm transition-all cursor-pointer ${
+                selectedLeafId === leaf.id
+                  ? 'border-green-400 shadow-md ring-4 ring-green-200/60'
+                  : 'border-gray-200 hover:shadow-md hover:border-gray-300'
+              }`}
+              onClick={() => setSelectedLeafId(leaf.id)}
+            >
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center text-green-700 font-bold border border-green-100">

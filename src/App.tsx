@@ -38,6 +38,9 @@ const App: React.FC = () => {
   const [data, setData] = useState<AssessmentData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  type MainTab = 'results' | 'compare';
+  const [activeTab, setActiveTab] = useState<MainTab>('results');
+
 
   // Cache to store translated results: { 'en': dataEn, 'te': dataTe, ... }
   const [assessmentCache, setAssessmentCache] = useState<Record<string, AssessmentData>>({});
@@ -47,6 +50,55 @@ const App: React.FC = () => {
   const [baseData, setBaseData] = useState<AssessmentData | null>(null);
 
   const { history, addRecord } = usePersistentHistory();
+
+  const loadHistoryRecord = async (record: CropAnalysisRecord) => {
+    setError(null);
+    setStatus(AssessmentStatus.COMPLETED);
+    setAssessmentCache({});
+    setBaseData(null);
+  setActiveTab('results');
+
+    // Restore image preview
+    try {
+      const url = URL.createObjectURL(record.imageBlob);
+      setImage(url);
+    } catch {
+      setImage(null);
+    }
+
+    // Minimal, UI-friendly restored result (keeps things uncluttered)
+    const restored: AssessmentData = {
+      imageUrl: null,
+      visionEvidence: {
+        lesion_color: 'unknown',
+        lesion_shape: 'unknown',
+        texture: 'unknown',
+        distribution: 'unknown',
+        anomalies_detected: [],
+        raw_analysis: record.diagnosis.description || 'Restored from history',
+      },
+      quality: { score: 1, flags: [], reasoning: 'Restored from history.' },
+      healthyResult: { score: 0, arguments: [], evidence_refs: {} },
+      diseaseResult: { score: 0, arguments: [], evidence_refs: {} },
+      arbitrationResult: {
+        decision: record.diagnosis.primaryIssue || 'Unknown',
+        confidence: record.diagnosis.confidence ?? 0,
+        rationale: [],
+      },
+      explanation: {
+        summary: record.diagnosis.description || 'Restored from history.',
+        guidance: record.diagnosis.recommendedActions ? [record.diagnosis.recommendedActions] : [],
+      },
+      leafAssessments: [],
+      uncertaintyFactors: {
+        lowImageQuality: false,
+        multipleLeaves: false,
+        visuallySimilarConditions: false,
+        other: ['This view is restored from history (no re-analysis).'],
+      },
+    };
+    setData(restored);
+  };
 
   // Handle Dynamic Translation on Language Change
   React.useEffect(() => {
@@ -168,6 +220,7 @@ const App: React.FC = () => {
     setBaseData(null);
     setError(null);
     setAssessmentCache({});
+  setActiveTab('results');
   };
 
   const changeLanguage = (lng: string) => {
@@ -175,7 +228,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <Layout history={history} onSelectHistory={() => { }} onNewAnalysis={reset}>
+    <Layout history={history} onSelectHistory={loadHistoryRecord} onNewAnalysis={reset}>
       <BioNetworkScene />
 
       <div className="mb-6 border-b border-white/20 pb-6 relative z-10 backdrop-blur-md bg-white/20 shadow-lg rounded-t-2xl p-6 -mx-6 -mt-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -298,6 +351,36 @@ const App: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-8 pb-12">
+            {/* Top-level view tabs (always discoverable) */}
+            <div className="flex items-center justify-end">
+              <div className="bg-white/60 backdrop-blur-xl rounded-full p-1 border border-white/40 shadow-sm flex items-center gap-1">
+                <button
+                  type="button"
+                  disabled={!(status === AssessmentStatus.COMPLETED && data)}
+                  onClick={() => setActiveTab('results')}
+                  className={`px-4 py-1.5 text-xs font-bold rounded-full transition-colors ${
+                    activeTab === 'results'
+                      ? 'bg-green-600 text-white'
+                      : 'text-gray-700 hover:bg-white/60'
+                  } disabled:opacity-40 disabled:cursor-not-allowed`}
+                >
+                  Results
+                </button>
+                <button
+                  type="button"
+                  disabled={!(status === AssessmentStatus.COMPLETED && data)}
+                  onClick={() => setActiveTab('compare')}
+                  className={`px-4 py-1.5 text-xs font-bold rounded-full transition-colors ${
+                    activeTab === 'compare'
+                      ? 'bg-green-600 text-white'
+                      : 'text-gray-700 hover:bg-white/60'
+                  } disabled:opacity-40 disabled:cursor-not-allowed`}
+                >
+                  Compare
+                </button>
+              </div>
+            </div>
+
             {/* Main Workspace */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
               {/* Image Preview */}
@@ -331,7 +414,10 @@ const App: React.FC = () => {
               {/* Workflow Progress */}
               <div className="lg:col-span-7">
                 <div className="bg-white/60 backdrop-blur-xl rounded-xl shadow-lg border border-white/40 p-6">
-                  <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide mb-4 border-b border-gray-200/50 pb-2">{t('pipeline_title')}</h3>
+                  <div className="flex items-center justify-between gap-4 mb-4 border-b border-gray-200/50 pb-3">
+                    <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide">{t('pipeline_title')}</h3>
+                  </div>
+
                   <AgentVisualizer status={status} />
                 </div>
               </div>
@@ -346,9 +432,19 @@ const App: React.FC = () => {
             )}
 
             {status === AssessmentStatus.COMPLETED && data && (
-              <div className="bg-white/60 backdrop-blur-xl rounded-xl shadow-lg border border-white/40 p-6">
-                <FinalResults data={data} sourceImage={image} />
-              </div>
+              <>
+                {activeTab === 'results' ? (
+                  <div className="bg-white/60 backdrop-blur-xl rounded-xl shadow-lg border border-white/40 p-6">
+                    <FinalResults data={data} sourceImage={image} />
+                  </div>
+                ) : (
+                  <div className="bg-white/60 backdrop-blur-xl rounded-xl shadow-lg border border-white/40 p-6">
+                    <div className="text-sm text-gray-700 font-medium">
+                      Compare view is coming next. You&apos;ll be able to pick 2 history scans and see what&apos;s changed.
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

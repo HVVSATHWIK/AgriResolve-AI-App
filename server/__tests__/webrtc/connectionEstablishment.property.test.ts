@@ -8,8 +8,8 @@ import * as fc from 'fast-check';
 import { Server as SocketIOServer } from 'socket.io';
 import { createServer } from 'http';
 import { io as Client, Socket as ClientSocket } from 'socket.io-client';
-import { webrtcSignalingServer } from '../../webrtc/signalingServer';
-import { websocketManager } from '../../websocket/websocketManager';
+import { webrtcSignalingServer } from '../../webrtc/signalingServer.js';
+import { websocketManager } from '../../websocket/websocketManager.js';
 
 interface NetworkQuality {
   bandwidth: number;

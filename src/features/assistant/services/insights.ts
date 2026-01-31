@@ -24,7 +24,7 @@ const FALLBACK_CALENDAR: CropCalendarEvent[] = [
 ];
 
 // In-memory map to deduplicate duplicate requests (e.g. React Strict Mode)
-const activeRequests: Record<string, Promise<CropCalendarEvent[]>> = {};
+const activeRequests: Record<string, Promise<CropCalendarEvent[]> | undefined> = {};
 
 export const fetchCropCalendar = async (location: string): Promise<CropCalendarEvent[]> => {
     const month = new Date().toLocaleString('default', { month: 'long' });

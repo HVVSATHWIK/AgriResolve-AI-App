@@ -5,8 +5,8 @@
  */
 
 import * as fc from 'fast-check';
-import { sessionManager } from '../../websocket/sessionManager';
-import { eventProcessor } from '../../websocket/eventProcessor';
+import { sessionManager } from '../../websocket/sessionManager.js';
+import { eventProcessor } from '../../websocket/eventProcessor.js';
 
 interface ExpertOpinion {
   expertId: string;
@@ -59,7 +59,12 @@ describe('Property: Expert Opinion Preservation', () => {
                 'Fungal Leaf Spot', 'Bacterial Blight', 'Viral Mosaic', 'Nutrient Deficiency',
                 'Pest Damage', 'Environmental Stress', 'Root Rot', 'Powdery Mildew'
               ),
-              confidence: fc.float({ min: Math.fround(0.1), max: Math.fround(1.0) }),
+              confidence: fc.float({
+                min: Math.fround(0.1),
+                max: Math.fround(1.0),
+                noNaN: true,
+                noDefaultInfinity: true
+              }),
               reasoning: fc.string({ minLength: 20, maxLength: 200 }),
               supportingEvidence: fc.array(fc.string({ minLength: 10, maxLength: 50 }), { minLength: 0, maxLength: 5 }),
               treatmentRecommendations: fc.array(fc.string({ minLength: 10, maxLength: 100 }), { minLength: 0, maxLength: 3 })

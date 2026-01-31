@@ -1,6 +1,88 @@
 import { routeGeminiCall } from '../../services/gemini';
 import { AssessmentData } from '../../types';
 import { QualityFlag } from './QualityEvaluator';
+import type { VisionEvidence } from './VisionEvidenceAgent';
+import type { QualityReport } from './QualityEvaluator';
+import type { HypothesisResult } from './HealthyHypothesisAgent';
+import type { ArbitrationResult } from './ArbitrationAgent';
+
+function extractJsonPayload(text: string): string {
+  const cleaned = text.replace(/```json\n?|```/g, '').trim();
+
+  // Prefer the first JSON object/array in the response.
+  const firstObj = cleaned.indexOf('{');
+  const firstArr = cleaned.indexOf('[');
+  let start = -1;
+  if (firstObj === -1) start = firstArr;
+  else if (firstArr === -1) start = firstObj;
+  else start = Math.min(firstObj, firstArr);
+
+  if (start === -1) return cleaned;
+
+  // Try to cut at the last closing brace/bracket.
+  const lastObj = cleaned.lastIndexOf('}');
+  const lastArr = cleaned.lastIndexOf(']');
+  const end = Math.max(lastObj, lastArr);
+
+  if (end === -1 || end <= start) return cleaned.slice(start);
+
+  return cleaned.slice(start, end + 1).trim();
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function asString(value: unknown, fallback: string): string {
+  return typeof value === 'string' ? value : fallback;
+}
+
+function asNumber(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function asStringArray(value: unknown, fallback: string[] = []): string[] {
+  return Array.isArray(value) && value.every(v => typeof v === 'string') ? value : fallback;
+}
+
+function parseVisionEvidence(value: unknown): VisionEvidence | null {
+  if (!isRecord(value)) return null;
+  return {
+    lesion_color: asString(value.lesion_color, 'unknown'),
+    lesion_shape: asString(value.lesion_shape, 'unknown'),
+    texture: asString(value.texture, 'unknown'),
+    distribution: asString(value.distribution, 'unknown'),
+    anomalies_detected: asStringArray(value.anomalies_detected, []),
+    raw_analysis: asString(value.raw_analysis, 'No analysis'),
+  };
+}
+
+function parseQuality(value: unknown): QualityReport | null {
+  if (!isRecord(value)) return null;
+  return {
+    score: asNumber(value.score, 1),
+    flags: Array.isArray(value.flags) ? (value.flags as QualityFlag[]) : [QualityFlag.OK],
+    reasoning: asString(value.reasoning, 'Acceptable'),
+  };
+}
+
+function parseHypothesis(value: unknown): HypothesisResult | null {
+  if (!isRecord(value)) return null;
+  return {
+    score: asNumber(value.score, 0),
+    arguments: asStringArray(value.arguments, []),
+    evidence_refs: isRecord(value.evidence_refs) ? value.evidence_refs : {},
+  };
+}
+
+function parseArbitration(value: unknown): ArbitrationResult | null {
+  if (!isRecord(value)) return null;
+  return {
+    decision: asString(value.decision, 'Unknown'),
+    confidence: asNumber(value.confidence, 0),
+    rationale: asStringArray(value.rationale, []),
+  };
+}
 
 export class ConsolidatedAgent {
   async run(imageB64: string, language: string = 'en'): Promise<AssessmentData> {
@@ -80,12 +162,29 @@ export class ConsolidatedAgent {
             - SAFETY: Do NOT provide human/animal medical advice. If the user mentions exposure/poisoning risk, advise contacting local emergency services/poison control.
         `;
 
+    const strictJsonReminder = `\n\nIMPORTANT: Return ONLY valid JSON. Do not include trailing commas, comments, markdown, or extra text. Ensure all strings are properly closed and escaped.`;
+
     try {
       const responseText = await routeGeminiCall('DEBATE_HIGH_THROUGHPUT', prompt, imageB64);
-      const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-      const data = JSON.parse(cleanJson);
 
-      if (data.subjectValidation && !data.subjectValidation.valid_subject) {
+  let data: unknown;
+      try {
+        data = JSON.parse(extractJsonPayload(responseText));
+      } catch {
+        // One retry with stricter instruction. This handles occasional model hiccups.
+        const retryText = await routeGeminiCall('DEBATE_HIGH_THROUGHPUT', prompt + strictJsonReminder, imageB64);
+        data = JSON.parse(extractJsonPayload(retryText));
+      }
+
+  if (!isRecord(data)) {
+    throw new Error('Model returned non-object JSON payload');
+  }
+
+      const subjectValidation = isRecord(data.subjectValidation)
+        ? (data.subjectValidation as Record<string, unknown>)
+        : undefined;
+
+      if (subjectValidation && subjectValidation.valid_subject === false) {
         return {
           imageUrl: null,
           visionEvidence: {
@@ -96,13 +195,17 @@ export class ConsolidatedAgent {
             anomalies_detected: [],
             raw_analysis: "Invalid subject"
           },
-          quality: { score: 0, flags: [QualityFlag.NOT_LEAF], reasoning: data.subjectValidation.message || "Invalid Subject" },
+          quality: {
+            score: 0,
+            flags: [QualityFlag.NOT_LEAF],
+            reasoning: typeof subjectValidation.message === 'string' ? subjectValidation.message : 'Invalid Subject'
+          },
           healthyResult: { score: 0, arguments: [], evidence_refs: {} },
           diseaseResult: { score: 0, arguments: [], evidence_refs: {} },
           arbitrationResult: {
             decision: "Not a Leaf",
             confidence: 0,
-            rationale: [data.subjectValidation.message || "Invalid subject."]
+            rationale: [typeof subjectValidation.message === 'string' ? subjectValidation.message : 'Invalid subject.']
           },
           explanation: {
             summary: "Please upload a clear image of a specific crop leaf.",
@@ -114,33 +217,87 @@ export class ConsolidatedAgent {
             visuallySimilarConditions: false,
             other: ["Invalid subject"]
           },
-          subjectValidation: data.subjectValidation
+          subjectValidation: {
+            valid_subject: false,
+            message: typeof subjectValidation.message === 'string' ? subjectValidation.message : 'Invalid subject.'
+          }
         };
       }
 
+      const parsedVisionEvidence = parseVisionEvidence(data.visionEvidence) ?? {
+        lesion_color: 'unknown',
+        lesion_shape: 'unknown',
+        texture: 'unknown',
+        distribution: 'unknown',
+        anomalies_detected: [],
+        raw_analysis: 'No analysis',
+      };
+
+      const parsedQuality = parseQuality(data.quality) ?? {
+        score: 1,
+        flags: [QualityFlag.OK],
+        reasoning: 'Acceptable',
+      };
+
+      const parsedHealthy = parseHypothesis(data.healthyResult) ?? { score: 0, arguments: [], evidence_refs: {} };
+      const parsedDisease = parseHypothesis(data.diseaseResult) ?? { score: 0, arguments: [], evidence_refs: {} };
+      const parsedArbitration = parseArbitration(data.arbitrationResult) ?? {
+        decision: 'Unknown',
+        confidence: 0,
+        rationale: [],
+      };
+
+      const parsedExplanation = isRecord(data.explanation)
+        ? {
+            summary: asString(data.explanation.summary, 'Analysis failed.'),
+            guidance: asStringArray(data.explanation.guidance, []),
+          }
+        : { summary: 'Analysis failed.', guidance: [] };
+
+      const parsedLeafAssessments = Array.isArray(data.leafAssessments)
+        ? (data.leafAssessments as unknown[])
+            .filter(isRecord)
+            .map(item => ({
+              id: asString(item.id, 'Leaf'),
+              observations: asStringArray(item.observations, []),
+              condition: asString(item.condition, 'Unknown'),
+              confidence: asNumber(item.confidence, 0),
+              notes: asString(item.notes, ''),
+            }))
+        : [];
+
+      const parsedUncertainty = isRecord(data.uncertaintyFactors)
+        ? {
+            lowImageQuality: Boolean(data.uncertaintyFactors.lowImageQuality),
+            multipleLeaves: Boolean(data.uncertaintyFactors.multipleLeaves),
+            visuallySimilarConditions: Boolean(data.uncertaintyFactors.visuallySimilarConditions),
+            other: asStringArray(data.uncertaintyFactors.other, []),
+          }
+        : {
+            lowImageQuality: false,
+            multipleLeaves: false,
+            visuallySimilarConditions: false,
+            other: [],
+          };
+
+      const parsedSubjectValidation = subjectValidation
+        ? {
+            valid_subject: Boolean(subjectValidation.valid_subject),
+            message: asString(subjectValidation.message, 'Valid leaf detected'),
+          }
+        : undefined;
+
       return {
         imageUrl: null,
-        visionEvidence: data.visionEvidence || {
-          lesion_color: "unknown",
-          lesion_shape: "unknown",
-          texture: "unknown",
-          distribution: "unknown",
-          anomalies_detected: [],
-          raw_analysis: "No analysis"
-        },
-        quality: data.quality || { score: 1, flags: [QualityFlag.OK], reasoning: "Acceptable" },
-        healthyResult: data.healthyResult || { score: 0, arguments: [], evidence_refs: {} },
-        diseaseResult: data.diseaseResult || { score: 0, arguments: [], evidence_refs: {} },
-        arbitrationResult: data.arbitrationResult || { decision: "Unknown", confidence: 0, rationale: [] },
-        explanation: data.explanation || { summary: "Analysis failed.", guidance: [] },
-        leafAssessments: data.leafAssessments || [],
-        uncertaintyFactors: data.uncertaintyFactors || {
-          lowImageQuality: false,
-          multipleLeaves: false,
-          visuallySimilarConditions: false,
-          other: []
-        },
-        subjectValidation: data.subjectValidation
+        visionEvidence: parsedVisionEvidence,
+        quality: parsedQuality,
+        healthyResult: parsedHealthy,
+        diseaseResult: parsedDisease,
+        arbitrationResult: parsedArbitration,
+        explanation: parsedExplanation,
+        leafAssessments: parsedLeafAssessments,
+        uncertaintyFactors: parsedUncertainty,
+        subjectValidation: parsedSubjectValidation,
       };
     } catch (error) {
       console.error("Consolidated Agent Error:", error);

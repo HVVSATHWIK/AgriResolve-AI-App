@@ -1,6 +1,6 @@
-import { logger } from '../utils/logger';
-import { eventProcessor } from './eventProcessor';
-import { websocketManager } from './websocketManager';
+import { logger } from '../utils/logger.js';
+import { eventProcessor } from './eventProcessor.js';
+import { websocketManager } from './websocketManager.js';
 
 interface AnnotationTool {
   id: string;

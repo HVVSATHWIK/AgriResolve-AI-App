@@ -4,6 +4,15 @@ import { motion } from 'framer-motion';
 export const ScanOverlay: React.FC<{ isActive: boolean }> = ({ isActive }) => {
     if (!isActive) return null;
 
+    // Keep random points stable during an active scan so they don't "jump" on re-render.
+    const points = React.useMemo(() => {
+        return Array.from({ length: 5 }).map(() => ({
+            top: Math.random() * 80 + 10,
+            left: Math.random() * 80 + 10,
+            repeatDelay: Math.random() * 2,
+        }));
+    }, []);
+
     return (
         <div className="absolute inset-0 z-20 pointer-events-none overflow-hidden rounded-2xl">
             {/* Pulsing Grid Background */}
@@ -27,13 +36,13 @@ export const ScanOverlay: React.FC<{ isActive: boolean }> = ({ isActive }) => {
 
             {/* Random "Detection" Points */}
             <div className="absolute inset-0">
-                {[1, 2, 3, 4, 5].map((i) => (
+                {points.map((p, idx) => (
                     <motion.div
-                        key={i}
+                        key={idx}
                         className="absolute w-4 h-4 border border-green-400 rounded-full flex items-center justify-center bg-green-500/20"
                         style={{
-                            top: `${Math.random() * 80 + 10}%`,
-                            left: `${Math.random() * 80 + 10}%`,
+                            top: `${p.top}%`,
+                            left: `${p.left}%`,
                         }}
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{
@@ -43,8 +52,8 @@ export const ScanOverlay: React.FC<{ isActive: boolean }> = ({ isActive }) => {
                         transition={{
                             duration: 0.8,
                             repeat: Infinity,
-                            delay: i * 0.4,
-                            repeatDelay: Math.random() * 2
+                            delay: (idx + 1) * 0.4,
+                            repeatDelay: p.repeatDelay
                         }}
                     >
                         <div className="w-1 h-1 bg-green-400 rounded-full" />

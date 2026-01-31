@@ -49,23 +49,56 @@ const DEFAULT_CONFIG = {
     ],
 };
 
-// Model Registry - Fallback to 2.5 Flash-Lite (Limit: 20/day) as 1.5/2.0 are unavailable/quota-0
-const MODEL_REGISTRY = {
-    VISION_FAST: "gemini-2.5-flash-lite",
-    DEBATE_HIGH_THROUGHPUT: "gemini-2.5-flash-lite",
-    ARBITRATION_SMART: "gemini-2.5-flash-lite",
-    EXPLANATION_POLISHED: "gemini-2.5-flash-lite",
-    CHAT_INTERACTIVE: "gemini-2.5-flash-lite",
-    GENERATE_JSON: "gemini-2.5-flash-lite",
+// Model Registry
+// - Avoid any 1.5 models (per request)
+// - Provide a small set of >=2.x/2.5-ish fallbacks so we can hop if one model is
+//   temporarily unavailable / rate-limited.
+// NOTE: Availability varies by account/quota; we treat this as an ordered preference list.
+const MODEL_FALLBACKS: Record<string, string[]> = {
+    VISION_FAST: [
+        'gemini-2.5-flash-lite',
+        'gemini-2.5-flash',
+        'gemini-2.0-flash',
+        'gemini-2.0-flash-lite',
+    ],
+    DEBATE_HIGH_THROUGHPUT: [
+        'gemini-2.5-flash-lite',
+        'gemini-2.5-flash',
+        'gemini-2.0-flash',
+        'gemini-2.0-flash-lite',
+    ],
+    ARBITRATION_SMART: [
+        'gemini-2.5-flash',
+        'gemini-2.5-flash-lite',
+        'gemini-2.0-flash',
+        'gemini-2.0-flash-lite',
+    ],
+    EXPLANATION_POLISHED: [
+        'gemini-2.5-flash',
+        'gemini-2.5-flash-lite',
+        'gemini-2.0-flash',
+        'gemini-2.0-flash-lite',
+    ],
+    CHAT_INTERACTIVE: [
+        'gemini-2.5-flash-lite',
+        'gemini-2.5-flash',
+        'gemini-2.0-flash',
+        'gemini-2.0-flash-lite',
+    ],
+    GENERATE_JSON: [
+        'gemini-2.5-flash-lite',
+        'gemini-2.5-flash',
+        'gemini-2.0-flash',
+        'gemini-2.0-flash-lite',
+    ],
 };
 
 export async function routeGeminiCall(
-    taskType: keyof typeof MODEL_REGISTRY,
+    taskType: keyof typeof MODEL_FALLBACKS,
     prompt: string,
     imageB64?: string
 ): Promise<string> {
-    const modelName = MODEL_REGISTRY[taskType];
-    console.log(`[Gemini Service] Routing '${taskType}' to model: ${modelName}`);
+    const modelCandidates = MODEL_FALLBACKS[taskType] ?? ['gemini-2.5-flash-lite'];
     const model = ai.models.generateContent;
 
     const parts: ({ text: string } | { inlineData: { mimeType: string; data: string } })[] = [{ text: prompt }];
@@ -80,63 +113,79 @@ export async function routeGeminiCall(
         });
     }
 
-    let attempt = 0;
-    const MAX_RETRIES = 3;
+    const MAX_RETRIES_PER_MODEL = 2;
 
-    while (attempt <= MAX_RETRIES) {
-        try {
-            const response = await model({
-                model: modelName,
-                contents: [{ parts }],
-                config: {
-                    ...DEFAULT_CONFIG,
-                    systemInstruction: { parts: [{ text: SAFETY_SYSTEM_INSTRUCTION }] },
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                } as any,
-            });
+    for (const modelName of modelCandidates) {
+        console.log(`[Gemini Service] Routing '${taskType}' to model: ${modelName}`);
 
-            const text = response.text || "";
+        let attempt = 0;
+        while (attempt <= MAX_RETRIES_PER_MODEL) {
+            try {
+                const response = await model({
+                    model: modelName,
+                    contents: [{ parts }],
+                    config: {
+                        ...DEFAULT_CONFIG,
+                        systemInstruction: { parts: [{ text: SAFETY_SYSTEM_INSTRUCTION }] },
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    } as any,
+                });
 
-            // For JSON tasks, strip markdown code blocks if present
-            if (taskType === 'GENERATE_JSON') {
-                return text.replace(/```json\n?|\n?```/g, '').trim();
+                const text = response.text || '';
+
+                // For JSON tasks, strip markdown code blocks if present
+                if (taskType === 'GENERATE_JSON') {
+                    return text.replace(/```json\n?|\n?```/g, '').trim();
+                }
+
+                return text;
+            } catch (error: unknown) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const err = error as any;
+                attempt++;
+
+                const status = err?.status ?? err?.code;
+                const message: string = String(err?.message ?? '');
+
+                // Model selection errors -> try next model.
+                const isModelNotFound = status === 404;
+                const isModelInvalid = status === 400 && /model/i.test(message) && /not found|invalid/i.test(message);
+
+                // Quota/server errors -> retry (backoff) then, if still failing, fall through to next model.
+                const isRateLimit = status === 429 || message.includes('429');
+                const isServerError = status === 500 || status === 502 || status === 503 || status === 504;
+
+                // Auth / key issues -> don't rotate models; prompt user to fix key.
+                const isAuthError = status === 401 || status === 403;
+                const isInvalidKey = (status === 400 || status === 403) && /API key/i.test(message);
+
+                if (isInvalidKey || isAuthError) {
+                    console.error(`Gemini API auth error (${taskType}) using ${modelName}:`, error);
+                    throw new Error('Gemini API key is invalid/missing or not authorized. Set VITE_GEMINI_API_TOKEN to a valid key.');
+                }
+
+                if (isModelNotFound || isModelInvalid) {
+                    console.warn(`Model ${modelName} unavailable (${status}). Trying next model...`);
+                    break;
+                }
+
+                if ((isRateLimit || isServerError) && attempt <= MAX_RETRIES_PER_MODEL) {
+                    const delay = 1500 * Math.pow(2, attempt - 1); // 1.5s, 3s
+                    console.warn(
+                        `Gemini transient error (${status ?? 'unknown'}) for ${modelName}. Retrying in ${delay}ms... (Attempt ${attempt}/${MAX_RETRIES_PER_MODEL})`
+                    );
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    continue;
+                }
+
+                // Non-retryable error -> try next model.
+                console.warn(`Gemini API error for ${modelName} (${taskType}); trying next model...`, error);
+                break;
             }
-
-            return text;
-        } catch (error: unknown) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const err = error as any;
-            attempt++;
-
-            // Analyze Error Types (New 2025 Strict Quotas)
-            const isRateLimit = err?.status === 429 || err?.code === 429 || err?.message?.includes('429');
-            const isModelNotFound = err?.status === 404 || err?.code === 404;
-
-            // Immediate Fail for 404 (Model Retired)
-            if (isModelNotFound) {
-                console.error(`CRITICAL: Model ${modelName} not found. It may be retired.`);
-                throw new Error(`Model ${modelName} is retired/unavailable. Check API docs.`);
-            }
-
-            // Retry Logic for 429 (Quota) or 503 (Server)
-            if (isRateLimit && attempt <= MAX_RETRIES) {
-                const delay = 3000 * Math.pow(2, attempt - 1); // Aggressive backoff: 3s, 6s, 12s
-                console.warn(`Gemini 2.5 Quota Hit (${taskType}). Retrying in ${delay}ms... (Attempt ${attempt}/${MAX_RETRIES})`);
-                await new Promise(resolve => setTimeout(resolve, delay));
-                continue;
-            }
-
-            // Fatal Error Handling
-            console.error(`Gemini API Error (${taskType}):`, error);
-
-            if (isRateLimit) {
-                throw new Error("Free Tier Quota Exceeded (Limit: ~20/day). Please link a Billing Account to Google Cloud Project.");
-            }
-
-            throw error;
         }
     }
 
-    // Defensive fallback (should be unreachable)
-    return "";
+    throw new Error(
+        `All Gemini fallback models failed for task '${taskType}'. Check your API key/quota and model availability.`
+    );
 }

@@ -1,5 +1,5 @@
 // Test setup file
-import { logger } from '../utils/logger';
+import { logger } from '../utils/logger.js';
 
 // Set log level to ERROR to reduce noise during tests
 logger.setLevel('ERROR');

@@ -82,7 +82,7 @@ Built on the **Gemini 2.5** engine, it employs a unique **Multi-Agent Consensus 
 3.  **Setup Environment**
     Create a `.env` file in the root directory:
     ```env
-    VITE_GEMINI_API_KEY=your_api_key_here
+    VITE_GEMINI_API_TOKEN=your_api_key_here
     ```
 
 4.  **Run Development Server**

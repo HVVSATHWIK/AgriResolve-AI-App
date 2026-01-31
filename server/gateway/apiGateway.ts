@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { serviceRegistry } from '../services/serviceRegistry';
-import { logger } from '../utils/logger';
+import { serviceRegistry } from '../services/serviceRegistry.js';
+import { logger } from '../utils/logger.js';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 
 const router = Router();
@@ -64,7 +64,7 @@ Object.entries(serviceRoutes).forEach(([path, serviceName]) => {
 router.get('/services', (req, res) => {
   const services = serviceRegistry.getAllServices();
   res.json({
-    services: Object.entries(services).map(([name, service]) => ({
+  services: (Object.entries(services) as Array<[string, { healthy: boolean; port: number; lastHealthCheck: Date }]>).map(([name, service]) => ({
       name,
       status: service.healthy ? 'healthy' : 'unhealthy',
       port: service.port,
