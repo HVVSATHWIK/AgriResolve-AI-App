@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
 import { Layout } from '../components/Layout';
+import { useSearchParams } from 'react-router-dom';
 import { AssessmentStatus, AssessmentData } from '../types';
 import { runAgenticPipeline } from '../agents/Orchestrator';
 import { HypothesisDebate } from '../components/HypothesisDebate';
@@ -38,6 +38,7 @@ import type { ArbitrationResult } from '../agents/definitions/ArbitrationAgent';
 
 export const Diagnosis: React.FC = () => {
     const { t, i18n } = useTranslation();
+    const [searchParams] = useSearchParams();
     const [status, setStatus] = useState<AssessmentStatus>(AssessmentStatus.IDLE);
     const [image, setImage] = useState<string | null>(null);
     const [data, setData] = useState<AssessmentData | null>(null);
@@ -286,7 +287,8 @@ export const Diagnosis: React.FC = () => {
                     (newStatus) => {
                         setStatus(newStatus);
                     },
-                    'en'
+                    'en',
+                    searchParams.get('mode') || 'scanner' // Pass mode
                 );
 
             setBaseData(base);
@@ -485,8 +487,8 @@ export const Diagnosis: React.FC = () => {
                                     disabled={!(status === AssessmentStatus.COMPLETED && data)}
                                     onClick={() => setActiveTab('results')}
                                     className={`px-4 py-1.5 text-xs font-bold rounded-full transition-colors ${activeTab === 'results'
-                                            ? 'bg-green-600 text-white'
-                                            : 'text-gray-700 hover:bg-white/60'
+                                        ? 'bg-green-600 text-white'
+                                        : 'text-gray-700 hover:bg-white/60'
                                         } disabled:opacity-40 disabled:cursor-not-allowed`}
                                 >
                                     Results
@@ -496,8 +498,8 @@ export const Diagnosis: React.FC = () => {
                                     disabled={!(status === AssessmentStatus.COMPLETED && data)}
                                     onClick={() => setActiveTab('compare')}
                                     className={`px-4 py-1.5 text-xs font-bold rounded-full transition-colors ${activeTab === 'compare'
-                                            ? 'bg-green-600 text-white'
-                                            : 'text-gray-700 hover:bg-white/60'
+                                        ? 'bg-green-600 text-white'
+                                        : 'text-gray-700 hover:bg-white/60'
                                         } disabled:opacity-40 disabled:cursor-not-allowed`}
                                 >
                                     Compare

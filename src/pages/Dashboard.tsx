@@ -33,7 +33,7 @@ export const Dashboard: React.FC = () => {
             desc: t('app_bio_desc', 'Discover hidden value in weeds'),
             iconType: 'BIOPROSPECTOR' as const,
             color: 'bg-purple-50 text-purple-600 border-purple-100',
-            action: () => navigate('/diagnosis'), // Integrated into Scanner
+            action: () => navigate('/diagnosis?mode=bioprospector'), // Distinct mode
             status: 'Active'
         },
         {

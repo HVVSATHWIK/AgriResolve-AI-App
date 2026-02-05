@@ -8,7 +8,7 @@ import { MobileBottomNav } from './components/MobileBottomNav';
 
 const App: React.FC = () => {
   return (
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <div className="min-h-screen bg-gray-50 font-inter text-gray-900 pb-16 md:pb-0">
         <Routes>
           <Route path="/" element={<Dashboard />} />

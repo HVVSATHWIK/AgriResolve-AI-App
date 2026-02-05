@@ -20,6 +20,9 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       VitePWA({
+        devOptions: {
+          enabled: false
+        },
         registerType: 'autoUpdate',
         includeAssets: ['favicon.png', 'favicon.svg', 'logo.png', 'logo.svg', 'og-preview.png'],
         manifest: {
@@ -71,7 +74,7 @@ export default defineConfig(({ mode }) => {
       }),
     ],
     define: {
-      'process.env.VITE_GEMINI_API_TOKEN': JSON.stringify(process.env.VITE_GEMINI_API_TOKEN || "")
+      // 'process.env.VITE_GEMINI_API_TOKEN': JSON.stringify(process.env.VITE_GEMINI_API_TOKEN || "") 
     },
     resolve: {
       alias: {

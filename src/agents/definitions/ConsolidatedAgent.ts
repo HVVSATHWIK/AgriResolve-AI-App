@@ -125,8 +125,61 @@ function parseArbitration(value: unknown): ArbitrationResult | null {
 }
 
 export class ConsolidatedAgent {
-  async run(imageB64: string, language: string = 'en'): Promise<AssessmentData> {
-    const prompt = `
+  async run(imageB64: string, language: string = 'en', mode: string = 'scanner'): Promise<AssessmentData> {
+    const isBioProspector = mode === 'bioprospector';
+
+    let prompt = '';
+
+    if (isBioProspector) {
+      prompt = `
+            You are AgriResolve Bio-Prospector, an expert Ethnobotanist and Market Researcher.
+            Your goal is to identify the "Hidden Value" in plants, weeds, and crops.
+            You are NOT looking for diseases. You are looking for OPPORTUNITY.
+
+            CORE PRINCIPLES:
+            1. ACCURATE ID: Identify the plant species with high precision.
+            2. HIDDEN VALUE: Focus on medicinal properties (Ayurveda, TCM), commercial uses (fibers, oils), and ecological benefits.
+            3. IGNORE PATHOLOGY: Do not report on diseases unless they critically destroy the value.
+            
+            CONTEXT:
+            - User Language: ${language} (Translate all outputs).
+
+            OUTPUT SCHEMA (Strict JSON):
+            {
+              "subjectValidation": { "valid_subject": boolean, "message": "Valid plant detected" },
+              "bioProspectorResult": {
+                "plant_name": "Common Name",
+                "scientific_name": "Latin Name",
+                "medicinal_uses": ["Use 1 (e.g. treats X)", "Use 2"],
+                "commercial_uses": ["Use 1 (e.g. biomass)", "Use 2"],
+                "ecological_value": ["Use 1 (e.g. nitrogen fixer)"],
+                "tips": ["Harvest tip", "Processing tip"]
+              },
+               // Fill these with neutral/healthy defaults to satisfy the interface
+              "visionEvidence": { 
+                "lesion_color": "none", "lesion_shape": "none", "texture": "healthy", "distribution": "none", 
+                "anomalies_detected": [], "raw_analysis": "Bio-Prospecting Analysis", "leaf_regions": [] 
+              },
+              "quality": { "score": 1, "flags": ["OK"], "reasoning": "Bio-prospecting mode" },
+              "healthyResult": { "score": 1, "arguments": ["Bio-prospecting focus"], "evidence_refs": {} },
+              "diseaseResult": { "score": 0, "arguments": [], "evidence_refs": {} },
+              "arbitrationResult": { "decision": "Healthy (Bio-Value Analysis)", "confidence": 1, "rationale": ["Bio-Prospector Analysis"] },
+              "explanation": {
+                "summary": "This plant has significant potential value.", 
+                "guidance": ["See Bio-Prospector details below."]
+              },
+              "leafAssessments": [],
+              "uncertaintyFactors": { "lowImageQuality": false, "multipleLeaves": false, "visuallySimilarConditions": false, "other": [] }
+            }
+
+            CRITICAL:
+            - Provide detailed, specific traditional uses.
+            - If it is a common weed (like Dandelion, Nettle), highlight its superfood/medicinal status.
+            - Output ONLY valid JSON.
+        `;
+    } else {
+      // Standard Disease Scanner Prompt
+      prompt = `
             You are AgriResolve, a conservative agricultural decision-support system. NOT a diagnostic authority.
             Your primary objective is to reduce overconfidence, manage uncertainty, and behave conservatively.
 
@@ -195,13 +248,7 @@ export class ConsolidatedAgent {
                 "summary": "Cautious summary of uncertainty and findings.",
                 "guidance": ["Observation step 1", "When to consult expert"]
               },
-              "bioProspectorResult": {
-                "plant_name": "Common Name",
-                "scientific_name": "Latin Name",
-                "medicinal_uses": ["Use 1", "Use 2"],
-                "commercial_uses": ["Use 1"],
-                "tips": ["Tip 1"]
-              }
+              "bioProspectorResult": null
             }
 
             CRITICAL RULES:
@@ -210,14 +257,8 @@ export class ConsolidatedAgent {
             - If confidence is low, "decision" MUST be "Unknown".
             - SAFETY: Do NOT provide pesticide/fungicide/herbicide product names, mixing instructions, dosing, spray rates, or any hazardous step-by-step guidance.
             - SAFETY: Do NOT provide human/animal medical advice. If the user mentions exposure/poisoning risk, advise contacting local emergency services/poison control.
-            
-            BIO-PROSPECTOR (Hidden Value):
-            - Identify the plant species carefully (especially if it seems like a weed).
-            - List traditional/Ethnobotanical uses (Ayurveda, etc.).
-            - List commercial biomass potential (fiber, oil, compost).
-            - Provide 1 or 2 practical "tips" for utilizing it. 
-            - If it is a common crop with no "hidden" value, leave lists empty.
         `;
+    }
 
     const strictJsonReminder = `\n\nIMPORTANT: Return ONLY valid JSON. Do not include trailing commas, comments, markdown, or extra text. Ensure all strings are properly closed and escaped.`;
 

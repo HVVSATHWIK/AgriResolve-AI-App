@@ -9,7 +9,8 @@ export type StatusCallback = (status: AssessmentStatus) => void;
 export async function runAgenticPipeline(
     imageB64: string,
     onStatusUpdate: StatusCallback,
-    language: string = 'en'
+    language: string = 'en',
+    mode: string = 'scanner'
 ): Promise<AssessmentData> {
 
     // Start with perception (UI effect)
@@ -19,7 +20,7 @@ export async function runAgenticPipeline(
         // ONE API CALL to rule them all
         // While waiting, we can artificially cycle states if we wanted, 
         // but for now we just wait.
-        const result = await consolidatedAgent.run(imageB64, language);
+        const result = await consolidatedAgent.run(imageB64, language, mode);
 
         // Rapidly progress through states for the visual flair on the frontend
         // (The user expects to see these stages). increased delays to 5s for "show" effect.
