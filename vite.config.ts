@@ -57,7 +57,8 @@ export default defineConfig(({ mode }) => {
           maximumFileSizeToCacheInBytes: 5000000,
           // Cache common static assets aggressively for field use.
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,glsl}'],
-          navigateFallback: '/',
+          // Must point to a precached URL; Workbox precaches index.html (not '/').
+          navigateFallback: 'index.html',
           navigateFallbackDenylist: [/^\/api/], // Don't intercept API requests
           runtimeCaching: [
             {

@@ -372,6 +372,7 @@ router.post('/analysis', async (req: Request, res: Response) => {
 
     let result: any;
     let diseaseRisks: any = null;
+    let weatherAvailable = false;
 
     // Try to get Gemini analysis
     if (geminiAvailable && ai) {
@@ -414,6 +415,32 @@ router.post('/analysis', async (req: Request, res: Response) => {
       result = cachedGeminiResult;
     }
 
+    // If we couldn't obtain any Gemini result (live or cached), fail fast with a clear service error.
+    // This prevents downstream crashes and matches the expected degradation behavior.
+    if (result === undefined || result === null) {
+      if (!serviceErrors.some(e => e.service === 'gemini')) {
+        const geminiError: ServiceError = {
+          service: 'gemini',
+          available: false,
+          message: 'Gemini API is currently unavailable. Please try again later.',
+          retryable: true,
+          retryAfter: 300,
+        };
+        serviceErrors.push(geminiError);
+      }
+
+      logger.warn('Analysis aborted: no Gemini result available (live or cached)', {
+        taskType,
+        hasImage: !!image,
+        geminiAvailable,
+        useCachedGemini,
+        sessionId: req.session?.id,
+      });
+
+      const errorResponse = createServiceErrorResponse(serviceErrors);
+      return res.status(503).json(errorResponse);
+    }
+
     // Calculate disease risks if crop type and location are provided
     // Requirements: 1.1, 1.2, 1.6, 1.7, 2.1, 2.2, 2.4, 2.6
     if (cropType && location) {
@@ -451,6 +478,7 @@ router.post('/analysis', async (req: Request, res: Response) => {
           }
 
           if (weatherData) {
+            weatherAvailable = true;
             const riskModel = new DiseaseRiskModel();
             const timezone = weatherData.timezone || req.session?.timezone || 'UTC';
 
@@ -508,7 +536,7 @@ router.post('/analysis', async (req: Request, res: Response) => {
     // Requirement 16.4: Check if we can proceed with partial data
     const proceedCheck = canProceedWithPartialData(
       geminiAvailable,
-      true, // Weather availability would be checked separately
+      weatherAvailable,
       useCachedGemini,
       !!validatedManualWeather
     );
@@ -521,7 +549,7 @@ router.post('/analysis', async (req: Request, res: Response) => {
 
     // Requirement 5.2: Never expose API keys in response
     // Double-check that no API key patterns exist in the response
-    const responseStr = JSON.stringify(result);
+    const responseStr = JSON.stringify(result) ?? '';
     if (responseStr.match(/AI[a-zA-Z0-9_-]{35,}/) ||
       responseStr.toLowerCase().includes('apikey') ||
       responseStr.toLowerCase().includes('api_key')) {
