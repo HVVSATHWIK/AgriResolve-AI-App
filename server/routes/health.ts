@@ -36,8 +36,8 @@ const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T
  */
 async function checkGeminiAPIAvailability(): Promise<{ available: boolean; message: string }> {
   try {
-    const apiKey = process.env.GEMINI_SERVICE_TOKEN;
-
+    // Support both variable names
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GEMINI_SERVICE_TOKEN;
 
     if (!apiKey) {
       return {
@@ -55,7 +55,7 @@ async function checkGeminiAPIAvailability(): Promise<{ available: boolean; messa
 
     await withTimeout(
       model({
-        model: 'gemini-2.5-flash-lite',
+        model: 'gemini-1.5-flash', // Use stable model for health check
         contents: [{ parts: [{ text: 'ping' }] }],
         config: {
           temperature: 0,
