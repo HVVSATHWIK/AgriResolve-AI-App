@@ -74,15 +74,27 @@ npm run start:server
 
 ### Health Check
 ```
-GET /health
+GET /api/health
 ```
 Returns server health status and service availability.
+
+Specific checks:
+```
+GET /api/health/gemini
+GET /api/health/weather
+```
 
 ### API Gateway
 ```
 /api/*
 ```
 All API routes are proxied through the gateway with authentication and rate limiting.
+
+### Analysis (Gemini Proxy)
+```
+POST /api/analysis
+```
+Secure proxy endpoint for Gemini requests. Primary model is `gemini-2.5-flash-lite` with fallbacks.
 
 ## Security Features
 
