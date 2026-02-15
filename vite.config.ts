@@ -76,9 +76,8 @@ export default defineConfig(({ mode }) => {
       }),
     ],
     define: {
-      // Expose generic env vars to the client (Vite specific)
-      'process.env.GEMINI_SERVICE_TOKEN': JSON.stringify(env.GEMINI_SERVICE_TOKEN || process.env.GEMINI_SERVICE_TOKEN || ""),
-      'process.env.VITE_GEMINI_SERVICE_TOKEN': JSON.stringify(env.VITE_GEMINI_SERVICE_TOKEN || process.env.VITE_GEMINI_SERVICE_TOKEN || "")
+      // No secrets here — API key lives only on the server.
+      // VITE_API_URL is auto-exposed by Vite (VITE_ prefix).
     },
     resolve: {
       alias: {
