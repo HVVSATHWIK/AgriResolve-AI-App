@@ -171,7 +171,7 @@ const callGeminiAPI = async (
   prompt: string,
   imageB64?: string
 ): Promise<string> => {
-  const modelCandidates = MODEL_FALLBACKS[taskType] ?? ['gemini-2.5-flash-lite'];
+  const modelCandidates = MODEL_FALLBACKS[taskType] ?? ['gemini-1.5-flash'];
   const model = ai.models.generateContent;
 
   const parts: ({ text: string } | { inlineData: { mimeType: string; data: string } })[] = [
