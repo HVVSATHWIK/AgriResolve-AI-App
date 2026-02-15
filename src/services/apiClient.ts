@@ -1,11 +1,10 @@
 /**
- * API Client for Direct Client-Side Gemini Access
+ * API Client — Backend Proxy
  * 
- * SIMPLIFIED IMPLEMENTATION: DIRECT API CALLS
- * Feature: client-side-simplicity
+ * All Gemini API calls are proxied through the backend server.
+ * The backend holds the API key; the client never touches it.
+ * Feature: security-and-architecture-compliance
  */
-
-import { GoogleGenAI } from '@google/genai';
 
 /**
  * API response structure (kept compatible with existing frontend code)
@@ -30,24 +29,24 @@ export interface AnalysisRequest {
   };
 }
 
-// Initialize Gemini Client
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.GEMINI_SERVICE_TOKEN || process.env.GEMINI_SERVICE_TOKEN;
-const genAI = apiKey ? new GoogleGenAI({ apiKey }) : null;
+/**
+ * Resolve the backend API base URL.
+ * In production → VITE_API_URL (e.g. https://agriresolve-backend.onrender.com)
+ * In development → empty string (Vite proxy or same-origin)
+ */
+const API_BASE = import.meta.env.VITE_API_URL ?? '';
 
 /**
  * Call Gemini API via Backend Proxy
- * 
- * Secure implementation: Delegates to server
- * Feature: security-and-architecture-compliance
  */
 export async function callAnalysisAPI<T = unknown>(
   request: AnalysisRequest
 ): Promise<ApiResponse<T>> {
 
   try {
-    console.log(`[API Client] Sending ${request.taskType} request to backend...`);
+    console.log(`[API Client] Sending ${request.taskType} request to backend at ${API_BASE}/api/analysis ...`);
 
-    const response = await fetch('/api/analysis', {
+    const response = await fetch(`${API_BASE}/api/analysis`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -67,21 +66,9 @@ export async function callAnalysisAPI<T = unknown>(
 
     const data = await response.json();
 
-    // Backend returns { success: true, data: { ...analysisResult... }, ... }
-    // We need to map this to our internal ApiResponse format
-    // Adjust based on actual server response structure in apiGateway.ts/analysis.ts
-    // Looking at apiGateway.ts, it returns data directly or proxies. 
-    // Wait, apiGateway.ts is just a proxy/validator?
-    // Let's check server/routes/analysis.ts to be sure of the response shape.
-    // For now assuming the backend returns the result in `data` or directly.
-
-    // Validating against server/routes/analysis.ts (which likely calls GeminiService backend)
-    // If backend returns the raw Gemini response structure, we might need to adapt.
-    // But typically our backend standardizes responses.
-
     return {
       success: true,
-      result: data.data || data.result || data, // Fallback support
+      result: data.data || data.result || data,
       timestamp: new Date().toISOString()
     };
 
@@ -92,11 +79,22 @@ export async function callAnalysisAPI<T = unknown>(
 }
 
 /**
- * Mock health checks since we have no backend
+ * Health check against the backend
  */
 export async function checkAPIHealth(): Promise<{ status: string }> {
-  return { status: 'healthy' };
+  try {
+    const res = await fetch(`${API_BASE}/api/health`);
+    return await res.json();
+  } catch {
+    return { status: 'unhealthy' };
+  }
 }
+
 export async function checkServiceHealth(service: string): Promise<{ service: string; available: boolean; message: string }> {
-  return { service, available: true, message: 'Client-side only' };
+  try {
+    const res = await fetch(`${API_BASE}/api/health/${service}`);
+    return await res.json();
+  } catch {
+    return { service, available: false, message: 'Health check failed' };
+  }
 }
