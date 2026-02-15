@@ -151,14 +151,25 @@ if (process.env.NODE_ENV === 'production') {
   app.use(express.static(clientBuildPath));
 
   // Handle React routing, return all requests to React app
-  app.get('*', (req, res) => {
+  // Handle React routing, return all requests to React app
+  // Fix for PathError: Missing parameter name at index 1: *
+  app.get(/(.*)/, (req, res) => {
     // skip api routes
     if (req.path.startsWith('/api')) {
       return res.status(404).json({ error: 'API endpoint not found' });
     }
-    res.sendFile(path.join(clientBuildPath, 'index.html'));
+    // Check if file exists, otherwise serve index.html
+    const filePath = path.join(clientBuildPath, req.path);
+    if (require('fs').existsSync(filePath)) {
+      res.sendFile(filePath);
+    } else {
+      res.sendFile(path.join(clientBuildPath, 'index.html'));
+    }
   });
 }
+
+// Trust proxy for rate limiting behind Render's load balancer
+app.set('trust proxy', 1);
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
