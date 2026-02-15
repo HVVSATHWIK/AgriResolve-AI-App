@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useMobile } from '../hooks/useMobile';
 import { useTranslation } from 'react-i18next';
-import { Play, Pause, RefreshCw, Droplets, Sprout, Wind, ThermometerSun, Activity, ChevronRight, Layers } from 'lucide-react';
+import { ArrowLeft, Play, Pause, RefreshCw, Droplets, Sprout, Wind, ThermometerSun, Activity, ChevronRight, Layers } from 'lucide-react';
 import { AgriTwinEngine } from '../features/agritwin/engine';
 import { SoilHealthCard, SimulationState, CROP_LIBRARY, CropType } from '../features/agritwin/types';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
@@ -320,6 +321,7 @@ const CameraController: React.FC<{ mode: 'ORBIT' | 'SCOUT' }> = ({ mode }) => {
 // --- Main Interface ---
 export const Simulator: React.FC = () => {
     const { t } = useTranslation();
+    const navigate = useNavigate();
     // Setup (Mock SHC for now - usually passed from user profile)
     const [shc] = useState<SoilHealthCard>({
         id: "demo-1", N: 280, P: 22, K: 150, pH: 7.2, EC: 0.5, OC: 0.6
@@ -383,6 +385,14 @@ export const Simulator: React.FC = () => {
             {/* Mobile Header / Toggle */}
             <div className="md:hidden bg-neutral-800 border-b border-white/10 p-4 flex justify-between items-center z-20 shrink-0">
                 <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => navigate('/')}
+                        aria-label={t('back_to_hub', 'Back to Hub')}
+                        className="p-2 -ml-2 rounded-lg text-neutral-300 hover:text-white hover:bg-white/10 transition-colors"
+                    >
+                        <ArrowLeft className="w-5 h-5" />
+                    </button>
                     <Activity className="w-5 h-5 text-emerald-400" />
                     <span className="font-bold text-lg tracking-tight">Agri-Twin</span>
                 </div>
@@ -401,6 +411,14 @@ export const Simulator: React.FC = () => {
                 ${isSidebarOpen ? 'flex translate-x-0' : 'hidden md:flex -translate-x-full'}
             `}>
                 <div className="hidden md:block">
+                    <button
+                        type="button"
+                        onClick={() => navigate('/')}
+                        className="inline-flex items-center gap-2 text-xs font-bold text-neutral-400 hover:text-white transition-colors mb-3"
+                    >
+                        <ArrowLeft className="w-4 h-4" />
+                        <span>{t('back_to_hub', 'Back to Hub')}</span>
+                    </button>
                     <h1 className="text-2xl font-black bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent flex items-center gap-2">
                         <Activity className="w-6 h-6 text-emerald-400" /> {t('sim_title', 'Agri-Twin')}
                     </h1>
