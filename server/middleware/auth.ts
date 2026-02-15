@@ -21,7 +21,10 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-producti
 
 export const authMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   // Skip auth for health checks and public endpoints
-  if (req.path === '/health' || req.path.startsWith('/public')) {
+  // Requirement 2.3: Allow public access to analysis for demo/unauthenticated users
+  if (req.path === '/health' ||
+    req.path.startsWith('/public') ||
+    req.path.startsWith('/analysis')) {
     return next();
   }
 
