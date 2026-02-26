@@ -28,7 +28,14 @@ const app = express();
 const server = createServer(app);
 const io = new SocketIOServer(server, {
   cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: [
+      process.env.CLIENT_URL,
+      process.env.FRONTEND_URL,
+      'https://agri-resolve-ai-app.vercel.app',
+      'https://agri-resolve-ai.vercel.app',
+      'http://localhost:5173',
+      'http://localhost:3000',
+    ].filter(Boolean) as string[],
     methods: ["GET", "POST"]
   }
 });
@@ -55,7 +62,8 @@ app.use(helmet({
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   process.env.CLIENT_URL,
-  'https://agri-resolve-ai.vercel.app',
+  'https://agri-resolve-ai-app.vercel.app',  // primary deployed frontend
+  'https://agri-resolve-ai.vercel.app',      // legacy / alternate URL
   'http://localhost:5173',
   'http://localhost:3000',
 ].filter(Boolean) as string[];
