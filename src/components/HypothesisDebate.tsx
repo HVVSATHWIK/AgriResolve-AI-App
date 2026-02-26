@@ -1,0 +1,132 @@
+import React from 'react';
+import ReactMarkdown from 'react-markdown';
+import { AssessmentData, HypothesisResult } from '../types';
+import { ShieldCheck, AlertTriangle } from 'lucide-react';
+import { calibrateForAssessment } from '../lib/confidenceCalibration';
+
+interface HypothesisDebateProps {
+  healthy: HypothesisResult;
+  disease: HypothesisResult;
+  assessment?: AssessmentData;
+  isVisible: boolean;
+}
+
+import { useTranslation } from 'react-i18next';
+
+export const HypothesisDebate: React.FC<HypothesisDebateProps> = ({ healthy, disease, assessment, isVisible }) => {
+  const { t } = useTranslation();
+  if (!isVisible) return null;
+
+  const healthyCal = assessment ? calibrateForAssessment(assessment, healthy?.score ?? 0) : null;
+  const diseaseCal = assessment ? calibrateForAssessment(assessment, disease?.score ?? 0) : null;
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 my-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Healthy Agent Card */}
+      <div className="bg-white rounded-xl shadow-sm border border-blue-100 p-6 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
+
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600">
+            <ShieldCheck className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="font-bold text-lg text-gray-900 leading-tight">{t('hypothesis_healthy')}</h3>
+            <p className="text-xs text-blue-600 font-medium uppercase tracking-wide">{t('agent_defense')}</p>
+          </div>
+          <div className="ml-auto flex flex-col items-end gap-1">
+            <div className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-bold border border-blue-100">
+              {healthyCal
+                ? t('evidence_pct', { defaultValue: '{{pct}}% Evidence', pct: Math.round(healthyCal.final * 100) })
+                : t('signal_pct', { defaultValue: '{{pct}}% Signal', pct: ((healthy?.score ?? 0) * 100).toFixed(0) })}
+            </div>
+            {healthyCal && (
+              <div className="text-[10px] text-blue-700/80 font-medium">
+                {t('model_signal_quality_line', {
+                  defaultValue: 'Model signal {{signal}}% • Quality {{quality}}%',
+                  signal: Math.round((healthy?.score ?? 0) * 100),
+                  quality: Math.round((assessment?.quality?.score ?? 0) * 100),
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-gray-50 rounded-lg p-4 border border-gray-100 text-sm text-gray-700 leading-relaxed">
+          <ul className="list-disc pl-4 space-y-2 marker:text-blue-400">
+            {healthy?.arguments?.map((arg, i) => (
+              <li key={i}><ReactMarkdown components={{ p: React.Fragment }}>{arg}</ReactMarkdown></li>
+            ))}
+          </ul>
+          {healthyCal && (
+            <div className="mt-3 text-[11px] text-gray-500">
+              <div className="font-semibold text-gray-600">{t('why_this_score', { defaultValue: 'Why this score' })}</div>
+              <div>
+                {(() => {
+                  const translated = (healthyCal.reasonParts ?? [])
+                    .slice(0, 4)
+                    .map((p) => t(p.key, { defaultValue: '', ...(p.params ?? {}) }))
+                    .filter(Boolean);
+                  return (translated.length ? translated : (healthyCal.reasons ?? []).slice(0, 4)).join(' • ');
+                })()}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Disease Agent Card */}
+      <div className="bg-white rounded-xl shadow-sm border border-red-100 p-6 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-1 h-full bg-red-500" />
+
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center text-red-600">
+            <AlertTriangle className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="font-bold text-lg text-gray-900 leading-tight">{t('hypothesis_disease')}</h3>
+            <p className="text-xs text-red-600 font-medium uppercase tracking-wide">{t('agent_pathology')}</p>
+          </div>
+          <div className="ml-auto flex flex-col items-end gap-1">
+            <div className="bg-red-50 text-red-700 px-3 py-1 rounded-full text-xs font-bold border border-red-100">
+              {diseaseCal
+                ? t('evidence_pct', { defaultValue: '{{pct}}% Evidence', pct: Math.round(diseaseCal.final * 100) })
+                : t('signal_pct', { defaultValue: '{{pct}}% Signal', pct: ((disease?.score ?? 0) * 100).toFixed(0) })}
+            </div>
+            {diseaseCal && (
+              <div className="text-[10px] text-red-700/80 font-medium">
+                {t('model_signal_quality_line', {
+                  defaultValue: 'Model signal {{signal}}% • Quality {{quality}}%',
+                  signal: Math.round((disease?.score ?? 0) * 100),
+                  quality: Math.round((assessment?.quality?.score ?? 0) * 100),
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-gray-50 rounded-lg p-4 border border-gray-100 text-sm text-gray-700 leading-relaxed">
+          <ul className="list-disc pl-4 space-y-2 marker:text-red-400">
+            {disease?.arguments?.map((arg, i) => (
+              <li key={i}><ReactMarkdown components={{ p: React.Fragment }}>{arg}</ReactMarkdown></li>
+            ))}
+          </ul>
+          {diseaseCal && (
+            <div className="mt-3 text-[11px] text-gray-500">
+              <div className="font-semibold text-gray-600">{t('why_this_score', { defaultValue: 'Why this score' })}</div>
+              <div>
+                {(() => {
+                  const translated = (diseaseCal.reasonParts ?? [])
+                    .slice(0, 4)
+                    .map((p) => t(p.key, { defaultValue: '', ...(p.params ?? {}) }))
+                    .filter(Boolean);
+                  return (translated.length ? translated : (diseaseCal.reasons ?? []).slice(0, 4)).join(' • ');
+                })()}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};

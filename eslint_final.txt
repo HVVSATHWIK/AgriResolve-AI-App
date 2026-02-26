@@ -1,0 +1,14 @@
+
+> agriresolve-ai@0.0.0 lint
+> eslint src --report-unused-disable-directives --quiet
+
+
+D:\AgriResolve-AI-main\AgriResolve-AI-main\src\components\ChatWidget.tsx
+  107:44  error  `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`  react/no-unescaped-entities
+
+D:\AgriResolve-AI-main\AgriResolve-AI-main\src\components\VoiceAssistant.tsx
+  96:21  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+  96:34  error  `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`  react/no-unescaped-entities
+
+??? 3 problems (3 errors, 0 warnings)
+
