@@ -128,6 +128,8 @@ const CROP_PROFILES: CropProfile[] = [
     },
 ];
 
+// data.gov.in public sample API key (from official documentation examples)
+const DATA_GOV_SAMPLE_KEY = '579b464db66ec23bdd000001cdd3946e44ce4aad7209ff7b23ac571b';
 const DATA_GOV_RESOURCE_ID = process.env.DATA_GOV_RESOURCE_ID || '9ef84268-d588-465a-a308-a864a43d0070';
 
 // Mock Data for Mandi Prices (fallback)
@@ -161,9 +163,10 @@ const normalizeRecords = (records: DataGovRecord[]): MarketPriceItem[] => {
 };
 
 async function fetchDataGovMarketPrices(params?: { commodity?: string; state?: string; district?: string; limit?: number }): Promise<MarketPriceItem[]> {
-    const apiKey = process.env.DATA_GOV_API_KEY;
+    // Prefer env var, fall back to public sample key so app works out of the box
+    const apiKey = (process.env.DATA_GOV_API_KEY || DATA_GOV_SAMPLE_KEY).trim();
     if (!apiKey) {
-        logger.warn('DATA_GOV_API_KEY missing, using fallback market data');
+        logger.warn('DATA_GOV_API_KEY not configured, using mock market data');
         return MOCK_MANDI_PRICES;
     }
 
